@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
+import 'package:http/http.dart' as http;
+import 'Entry.dart';
+import 'EntryDialog.dart';
+import 'dart:convert';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  Future<Response> fetchEntry(String type, int index) {
-    return get(
-        'https://dnd5eapi.co/api/' + type + '/' + index.toString() + '/');
-  }
 
   // This widget is the root of your application.
   @override
@@ -50,6 +49,50 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+
+
+  Future<Entry> fetchEntry(String type, int index) async {
+    final response = await http.get('http://dnd5eapi.co/api/' + type + '/' + index.toString() + '/');
+    if (response.statusCode == 200)
+      return Entry.fromJson(json.decode(response.body));
+    else
+      throw Exception('failed to load entry');
+  }
+
+  Future<Entries> fetchEntryList(String type) async {
+    final response = await http.get('http://dnd5eapi.co/api/' + type);
+    if (response.statusCode == 200)
+      return Entries.fromJson(json.decode(response.body));
+    else
+      throw Exception('failed to load entries');
+  }
+
+  void _openEntryDialog(String url) {
+    Navigator.of(context).push(new MaterialPageRoute<Null>(
+      builder: (BuildContext context) {
+        return new EntryDialog(url: url);
+      },
+      fullscreenDialog: true
+    ));
+  }
+
+  Widget createListView(BuildContext context, AsyncSnapshot snapshot){
+    Entries entries = snapshot.data;
+    return new ListView.builder(
+      itemCount: entries.count,
+      itemBuilder: (BuildContext context, int index){
+        return new Column(children: <Widget>[
+          new ListTile(
+            title: new Text(entries.results.elementAt(index)['name']),
+            //TODO: Open sheet with url values
+            onTap: () { _openEntryDialog(entries.results.elementAt(index)['url']);},
+          ),
+          new Divider(height: 2.0)
+        ],);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
@@ -67,22 +110,20 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
-        child: Column(
-          // Column is also layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: FutureBuilder<Entries>(
+          future: fetchEntryList('spells'),
+          builder: (context, snapshot) {
+            switch (snapshot.connectionState){
+              case ConnectionState.none:
+              case ConnectionState.waiting:
+                return CircularProgressIndicator();
+              default:
+                if (snapshot.hasError)
+                  return new Text('Error: ${snapshot.error}');
+                else
+                  return createListView(context, snapshot);
+            }
+          },
         ),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
