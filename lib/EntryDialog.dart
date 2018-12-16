@@ -6,6 +6,7 @@ import 'dart:convert';
 
 class EntryDialog extends StatefulWidget {
   final String url;
+  Future<Entry> entry;
 
   EntryDialog({this.url});
 
@@ -14,6 +15,11 @@ class EntryDialog extends StatefulWidget {
 }
 
 class EntryDialogState extends State<EntryDialog> {
+  @override
+  void initState() {
+    super.initState();
+    widget.entry = fetchEntryByURL(widget.url);
+  }
 
   Future<Entry> fetchEntryByURL(String url) async{
     final response = await http.get(url);
@@ -52,7 +58,7 @@ class EntryDialogState extends State<EntryDialog> {
       return new Scaffold(
         body: Center(
           child: FutureBuilder<Entry>(
-            future: fetchEntryByURL(widget.url),
+            future: widget.entry,
             builder: (context, snapshot) {
               switch(snapshot.connectionState){
                 case ConnectionState.none:
