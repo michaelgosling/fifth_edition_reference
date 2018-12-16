@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
+  Future<Response> fetchEntry(String type, int index) {
+    return get(
+        'https://dnd5eapi.co/api/' + type + '/' + index.toString() + '/');
+  }
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -44,7 +50,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
