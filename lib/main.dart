@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'EntryList.dart';
 import 'Entry.dart';
-import 'EntryDialog.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-void main() => runApp(MyApp());
 
-class MyApp extends StatelessWidget {
+void main() => runApp(FifthEditionReference());
+
+class FifthEditionReference extends StatelessWidget {
 
   // This widget is the root of your application.
   @override
@@ -14,48 +15,45 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Fifth Edition Reference',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Fifth Edition Reference'),
+      home: Home(title: 'Fifth Edition Reference'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+class Home extends StatefulWidget {
+
+  Home({Key key, this.title}) : super(key: key);
 
   final String title;
-  Future<Entries> entries;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _HomeState createState() => _HomeState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _HomeState extends State<Home> {
+
+  EntryList _spellsWidget, _equipmentWidget, _featuresWidget;
+  int _currentIndex = 0;
+  final List<Widget> _children = [];
+  Future<Entries> _spells, _equipment, _features;
 
   @override
   void initState(){
     super.initState();
-    widget.entries = fetchEntryList('spells');
+    _spells = fetchEntryList('spells');
+    _equipment = fetchEntryList('equipment');
+    _features = fetchEntryList('features');
+    _spellsWidget = new EntryList(entries: _spells);
+    _equipmentWidget = new EntryList(entries: _equipment);
+    _featuresWidget = new EntryList(entries: _features);
+    _children.add(_spellsWidget);
+    _children.add(_equipmentWidget);
+    _children.add(_featuresWidget);
   }
 
 
-  Future<Entry> fetchEntry(String type, int index) async {
-    final response = await http.get('http://dnd5eapi.co/api/' + type + '/' + index.toString() + '/');
-    if (response.statusCode == 200)
-      return Entry.fromJson(json.decode(response.body));
-    else
-      throw Exception('failed to load entry');
-  }
 
   Future<Entries> fetchEntryList(String type) async {
     final response = await http.get('http://dnd5eapi.co/api/' + type);
@@ -65,65 +63,39 @@ class _MyHomePageState extends State<MyHomePage> {
       throw Exception('failed to load entries');
   }
 
-  void _openEntryDialog(String url) {
-    Navigator.of(context).push(new MaterialPageRoute<Null>(
-      builder: (BuildContext context) {
-        return new EntryDialog(url: url);
-      },
-      fullscreenDialog: true
-    ));
-  }
-
-  Widget createListView(BuildContext context, AsyncSnapshot snapshot){
-    Entries entries = snapshot.data;
-    return new ListView.builder(
-      itemCount: entries.count,
-      itemBuilder: (BuildContext context, int index){
-        return new Column(children: <Widget>[
-          new ListTile(
-            title: new Text(entries.results.elementAt(index)['name']),
-            //TODO: Open sheet with url values
-            onTap: () { _openEntryDialog(entries.results.elementAt(index)['url']);},
-          ),
-          new Divider(height: 2.0)
-        ],);
-      },
-    );
+  void onTabTapped(int index){
+    setState(() {
+          _currentIndex = index;
+        });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
+      return Scaffold(
+        appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: FutureBuilder<Entries>(
-          future: widget.entries,
-          builder: (context, snapshot) {
-            switch (snapshot.connectionState){
-              case ConnectionState.none:
-              case ConnectionState.waiting:
-                return CircularProgressIndicator();
-              default:
-                if (snapshot.hasError)
-                  return new Text('Error: ${snapshot.error}');
-                else
-                  return createListView(context, snapshot);
-            }
-          },
-        ),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
-  }
+      body: _children[_currentIndex],
+      bottomNavigationBar: new BottomNavigationBar(
+        onTap: onTabTapped,
+        currentIndex: _currentIndex,
+        items: [
+          BottomNavigationBarItem(
+            icon: new Icon(Icons.bubble_chart),
+            title: new Text("Spells"),
+          ),
+          BottomNavigationBarItem(
+            icon: new Icon(Icons.colorize),
+            title: new Text("Equipment"),
+          ),
+          BottomNavigationBarItem(
+            icon: new Icon(Icons.description),
+            title: new Text("Features"),
+          )
+        ],
+      ), 
+      );
+    }
 }
